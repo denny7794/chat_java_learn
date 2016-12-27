@@ -1,6 +1,7 @@
 import javax.swing.*;
-import javax.swing.tree.ExpandVetoException;
 import java.awt.*;
+import java.net.*;
+import java.util.regex.*;
 
 /**
  * Created by Denis on 27.12.2016.
@@ -23,12 +24,45 @@ public class ChatUDP extends JFrame{
         @Override
         public void start(){
             super.start();
-            System.out.println("hello from thread");
+            //System.out.println("hello from thread");
+            try {
+                customize();
+            } catch (Exception ex){
+                ex.printStackTrace();
+            }
+
+        }
+        private void customize() throws  Exception {
+            DatagramSocket receiveSocket = new DatagramSocket(PORT);
+            Pattern regex = Pattern.compile("[\u0020-\uFFFF]");
+
+            while (true){
+                byte[] receiveData = new byte[1024];
+                DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+                receiveSocket.receive(receivePacket);
+                InetAddress IPAddress = receivePacket.getAddress();
+                int port = receivePacket.getPort();
+                String sentence = new String(receivePacket.getData());
+                Matcher m = regex.matcher(sentence);
+
+                taMain.append(IPAddress.toString() + ":" + port + ": ");
+                while (m.find())
+                    taMain.append(sentence.substring(m.start(), m.end()));
+                taMain.append("\r\n");
+                taMain.setCaretPosition(taMain.getText().length());
+            }
         }
     }
 
     private void btnSend_Handler() throws Exception{
-
+        DatagramSocket sendSocket = new DatagramSocket();
+        InetAddress IPAddress = InetAddress.getByName(IP_BROADCAST);
+        byte[] sendData;
+        String sentence = tfMsg.getText();
+        tfMsg.setText("");
+        sendData = sentence.getBytes("UTF-8");
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, PORT);
+        sendSocket.send(sendPacket);
     }
 
     private void frameDraw(JFrame frame){
@@ -63,7 +97,9 @@ public class ChatUDP extends JFrame{
 
     private void antistatic(){
         frameDraw(new ChatUDP());
+        //System.out.println("hello world");
         new thdReceiver().start();
+        //System.out.println("hello world");
     }
 
     public static void main(String[] args) {
